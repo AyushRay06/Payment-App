@@ -2,7 +2,7 @@ const express = require("express")
 const router = express.Router()
 const zod = require("zod")
 const JWT_SECRET = require("../config")
-const { User } = require("../db")
+const { User, Account } = require("../db")
 const { authMiddleware } = require("../middleware")
 
 //FOR INPUT VALIDATION
@@ -54,6 +54,12 @@ router.post("/signup", async (req, res) => {
   //JWT TOKEN CREATION
 
   const userId = user._id
+  //assingning random bank balance on account creation
+  await Account.create({
+    userId,
+    balance: 1 + Math.random() * 1000,
+  })
+
   // JWT,SIGH taken 2 parameters First the user id an dthen the secret
   const token = jwt.sign(
     {
@@ -93,7 +99,8 @@ router.post("/signin", async (req, res) => {
   })
 })
 
-router.put("/", async (req, res, authMiddleware) => {
+//MIDDLEWARE SHOULD COME BEFORE THE ACTUAL FUNCTION
+router.put("/", authMiddleware, async (req, res) => {
   const parsedInput = userUpdateBody.safeParse(req.body)
   if (!parsedInput.success) {
     res.status(411).json({
@@ -107,7 +114,7 @@ router.put("/", async (req, res, authMiddleware) => {
   })
 })
 
-router.get("/bulk", async (req, res, authMiddleware) => {
+router.get("/bulk", async (req, res) => {
   const filter = req.query.filter || ""
 
   const users = await User.find({
