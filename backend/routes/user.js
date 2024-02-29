@@ -3,6 +3,7 @@ const router = express.Router()
 const zod = require("zod")
 const JWT_SECRET = require("../config")
 const { User } = require("../db")
+const { authMiddleware } = require("../middleware")
 
 //FOR INPUT VALIDATION
 const signUpbody = zod.object({
@@ -15,6 +16,12 @@ const signUpbody = zod.object({
 const signInBody = zod.object({
   username: zod.string().email(),
   password: zod.string(),
+})
+
+const userUpdateBody = zod.object({
+  password: zod.string().optional(),
+  firstName: zod.string().min(3).optional(),
+  lastName: zod.string().min(3).optional(),
 })
 
 //SIGNUP ROUTE
@@ -61,7 +68,7 @@ router.post("/signup", async (req, res) => {
   })
 })
 
-router.post("/signup", async (req, res) => {
+router.post("/signin", async (req, res) => {
   const parsedInput = signInBody.safeParse(req.body)
   if (!parsedInput.success) {
     res.status(411).json({
@@ -85,4 +92,47 @@ router.post("/signup", async (req, res) => {
     msg: "User already Exist",
   })
 })
+
+router.put("/", async (req, res, authMiddleware) => {
+  const parsedInput = userUpdateBody.safeParse(req.body)
+  if (!parsedInput.success) {
+    res.status(411).json({
+      msg: "Invalid Inputs",
+    })
+    return
+  }
+  await User.updateOne({ _id: req.userId }, req.body)
+  res.json({
+    msg: "Update Successful",
+  })
+})
+
+router.get("/bulk", async (req, res, authMiddleware) => {
+  const filter = req.query.filter || ""
+
+  const users = await User.find({
+    $or: [
+      {
+        firstName: {
+          $regex: filter,
+        },
+      },
+      {
+        lastName: {
+          $regex: filter,
+        },
+      },
+    ],
+  })
+
+  res.json({
+    user: users.map((user) => ({
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      _id: user._id,
+    })),
+  })
+})
+
 module.exports = router
