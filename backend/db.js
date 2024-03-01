@@ -1,7 +1,7 @@
 const mongoose = require("mongoose")
 
 mongoose.connect(
-  "mongodb+srv://rayayush47:AxhOWsByFx0icRjR@cluster0.aqvkhv5.mongodb.net/"
+  "mongodb+srv://rayayush47:AxhOWsByFx0icRjR@cluster0.aqvkhv5.mongodb.net/paytm"
 )
 
 const userSchema = new mongoose.Schema({
