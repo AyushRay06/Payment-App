@@ -3,19 +3,18 @@ const jwt = require("jsonwebtoken")
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization
-  if (!authHeader || !authHeader.startswith("Bearer")) {
-    res.status(403).json({
-      Msg: "Error",
-    })
-    return
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(403).json({})
   }
 
   const token = authHeader.split(" ")[1]
 
   try {
-    const verify = jwt.verify(token, JWT_SECRET)
+    const decoded = jwt.verify(token, JWT_SECRET)
 
-    req.userId = verify.userId
+    req.userId = decoded.userId
+
     next()
   } catch (err) {
     return res.status(403).json({})

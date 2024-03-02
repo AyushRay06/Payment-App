@@ -1,66 +1,51 @@
+// backend/routes/user.js
 const express = require("express")
+
 const router = express.Router()
 const zod = require("zod")
-const JWT_SECRET = require("../config")
 const { User, Account } = require("../db")
+const jwt = require("jsonwebtoken")
+const { JWT_SECRET } = require("../config")
 const { authMiddleware } = require("../middleware")
 
-//FOR INPUT VALIDATION
-const signUpbody = zod.object({
+const signupBody = zod.object({
   username: zod.string().email(),
-  firstName: zod.string().min(3),
-  lastName: zod.string().min(3),
-  password: zod.string().min(8),
-})
-
-const signInBody = zod.object({
-  username: zod.string().email(),
+  firstName: zod.string(),
+  lastName: zod.string(),
   password: zod.string(),
 })
 
-const userUpdateBody = zod.object({
-  password: zod.string().optional(),
-  firstName: zod.string().min(3).optional(),
-  lastName: zod.string().min(3).optional(),
-})
-
-//SIGNUP ROUTE
 router.post("/signup", async (req, res) => {
-  //PARSING INPUT BODY TO VALIDATE
-  const parsedInput = signUpbody.safeParse(req.body)
-  //IF USER INPUTS ARE INCORRECT THIS WILL TERMINATE THE PROCESS ELSE CTN
-  if (!parsedInput.success) {
-    res.status(411).json({
-      msg: "Invalid Input",
+  const { success } = signupBody.safeParse(req.body)
+  if (!success) {
+    return res.status(411).json({
+      message: "Emaill already taken / Incorrect inputs",
     })
-    return
   }
-  //USER INPUT IS CORRECT NOW CHECKING IF THE EMAIL GIVEN ALREADY EXIST IF NOT ADD THE USER TO DB
-  const userExist = await User.findOne(username)
 
-  if (userExist) {
-    res.status(411).json({
-      msg: "User exist",
+  const existingUser = await User.findOne({
+    username: req.body.username,
+  })
+
+  if (existingUser) {
+    return res.status(411).json({
+      message: "Email already taken/Incorrect inputs",
     })
-    return
   }
+
   const user = await User.create({
     username: req.body.username,
+    password: req.body.password,
     firstName: req.body.firstName,
     lastName: req.body.lastName,
-    password: req.body.password,
   })
-
-  //JWT TOKEN CREATION
-
   const userId = user._id
-  //assingning random bank balance on account creation
+
   await Account.create({
     userId,
-    balance: 1 + Math.random() * 1000,
+    balance: 1 + Math.random() * 10000,
   })
 
-  // JWT,SIGH taken 2 parameters First the user id an dthen the secret
   const token = jwt.sign(
     {
       userId,
@@ -69,25 +54,37 @@ router.post("/signup", async (req, res) => {
   )
 
   res.json({
-    msg: "User Created Successfully",
+    message: "User created successfully",
     token: token,
   })
 })
 
+const signinBody = zod.object({
+  username: zod.string().email(),
+  password: zod.string(),
+})
+
 router.post("/signin", async (req, res) => {
-  const parsedInput = signInBody.safeParse(req.body)
-  if (!parsedInput.success) {
-    res.status(411).json({
-      msg: "Invalid Input",
+  const { success } = signinBody.safeParse(req.body)
+  if (!success) {
+    return res.status(411).json({
+      message: "Email already taken / Incorrect inputs",
     })
-    return
   }
+
   const user = await User.findOne({
     username: req.body.username,
     password: req.body.password,
   })
 
   if (user) {
+    const token = jwt.sign(
+      {
+        userId: user._id,
+      },
+      JWT_SECRET
+    )
+
     res.json({
       token: token,
     })
@@ -95,22 +92,30 @@ router.post("/signin", async (req, res) => {
   }
 
   res.status(411).json({
-    msg: "User already Exist",
+    message: "Error while logging in",
   })
 })
 
-//MIDDLEWARE SHOULD COME BEFORE THE ACTUAL FUNCTION
+const updateBody = zod.object({
+  password: zod.string().optional(),
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+})
+
 router.put("/", authMiddleware, async (req, res) => {
-  const parsedInput = userUpdateBody.safeParse(req.body)
-  if (!parsedInput.success) {
+  const { success } = updateBody.safeParse(req.body)
+  if (!success) {
     res.status(411).json({
-      msg: "Invalid Inputs",
+      message: "Error while updating information",
     })
-    return
   }
-  await User.updateOne({ _id: req.userId }, req.body)
+
+  await User.updateOne(req.body, {
+    id: req.userId,
+  })
+
   res.json({
-    msg: "Update Successful",
+    message: "Updated successfully",
   })
 })
 
