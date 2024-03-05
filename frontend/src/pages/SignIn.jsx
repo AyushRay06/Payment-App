@@ -35,7 +35,11 @@ export const Signin = () => {
           <div className="pt-8">
             <Button label={"Sign In"} />
           </div>
-          <BottomWarning label={"Don't have an account? Sign Up"} />
+          <BottomWarning
+            label={"Don't have an account? Sign Up"}
+            buttonText={"Sign up"}
+            to={"/signup"}
+          />
         </div>
       </div>
     </div>
